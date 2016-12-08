@@ -1,6 +1,9 @@
 # ws: a node.js websocket library
 
-[![Build Status](https://travis-ci.org/websockets/ws.svg?branch=master)](https://travis-ci.org/websockets/ws)
+[![Version npm](https://img.shields.io/npm/v/ws.svg)](https://www.npmjs.com/package/ws)
+[![Linux Build](https://img.shields.io/travis/websockets/ws/master.svg)](https://travis-ci.org/websockets/ws)
+[![Windows Build](https://ci.appveyor.com/api/projects/status/github/websockets/ws?branch=master&svg=true)](https://ci.appveyor.com/project/lpinca/ws)
+[![Coverage Status](https://img.shields.io/coveralls/websockets/ws/master.svg)](https://coveralls.io/r/websockets/ws?branch=master)
 
 `ws` is a simple to use WebSocket implementation, up-to-date against RFC-6455,
 and [probably the fastest WebSocket library for node.js][archive].
@@ -10,9 +13,6 @@ for the full reports.
 
 ## Protocol support
 
-* **Hixie draft 76** (Old and deprecated, but still in use by Safari and Opera.
-  Added to ws version 0.4.2, but server only. Can be disabled by setting the
-  `disableHixie` option to true.)
 * **HyBi drafts 07-12** (Use the option `protocolVersion: 8`)
 * **HyBi drafts 13-17** (Current default, alternatively option `protocolVersion: 13`)
 
@@ -128,11 +128,21 @@ server.listen(port, function () { console.log('Listening on ' + server.address()
 var WebSocketServer = require('ws').Server
   , wss = new WebSocketServer({ port: 8080 });
 
+// Broadcast to all.
 wss.broadcast = function broadcast(data) {
   wss.clients.forEach(function each(client) {
     client.send(data);
   });
 };
+
+wss.on('connection', function connection(ws) {
+  ws.on('message', function message(data) {
+    // Broadcast to everyone else.
+    wss.clients.forEach(function each(client) {
+      if (client !== ws) client.send(data);
+    });
+  });
+});
 ```
 
 ### Error handling best practices

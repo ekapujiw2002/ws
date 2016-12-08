@@ -1,10 +1,10 @@
 # ws
 
-## Class: ws.Server
+## Class: WebSocket.Server
 
 This class is a WebSocket server. It is an `EventEmitter`.
 
-### new ws.Server([options], [callback])
+### new WebSocket.Server([options], [callback])
 
 * `options` Object
   * `host` String
@@ -14,7 +14,6 @@ This class is a WebSocket server. It is an `EventEmitter`.
   * `handleProtocols` Function
   * `path` String
   * `noServer` Boolean
-  * `disableHixie` Boolean
   * `clientTracking` Boolean
   * `perMessageDeflate` Boolean|Object
 * `callback` Function
@@ -46,13 +45,12 @@ If `verifyClient` is not set then the handshake is automatically accepted.
 
 ### options.handleProtocols
 
-`handleProtocols` receives two arguments:
-* `protocols` Array: The list of WebSocket sub-protocols indicated by the client in the Sec-WebSocket-Protocol header.
-* `cb` Function: A callback that must be called by the user upon inspection of the protocols. Arguments in this callback are:
-  * `result` Boolean: Whether the user accepts or not the handshake.
-  * `protocol` String: If `result` is `true` then this field sets the value of the Sec-WebSocket-Protocol header in the HTTP 101 response.
+`handleProtocols` takes a single argument:
+* `protocols` Array: The list of WebSocket sub-protocols indicated by the client in the `Sec-WebSocket-Protocol` header.
 
-If `handleProtocols` is not set then the handshake is accepted regardless the value of Sec-WebSocket-Protocol header. If it is set but the user does not invoke the `cb` callback then the handshake is rejected with error HTTP 501.
+If returned value is `false` then the handshake is rejected with the HTTP 401 status code, otherwise the returned value sets the value of the `Sec-WebSocket-Protocol` header in the HTTP 101 response.
+
+If `handleProtocols` is not set then the handshake is automatically accepted.
 
 ### options.perMessageDeflate
 
@@ -63,18 +61,20 @@ If `handleProtocols` is not set then the handshake is accepted regardless the va
 * `serverMaxWindowBits` Number: The value of windowBits.
 * `clientMaxWindowBits` Number: The value of max windowBits to be requested to clients.
 * `memLevel` Number: The value of memLevel.
+* `threshold` Number: Payloads smaller than this will not be compressed. Default 1024 bytes.
 
 If a property is empty then either an offered configuration or a default value is used.
+When sending a fragmented message the length of the first fragment is compared to the threshold. This determines if compression is used for the entire message.
 
 ### server.close([callback])
 
-Close the server and terminate all clients, calls callback when done with an error if one occured.
+Close the server and terminate all clients, calls callback when done with an error if one occurred.
 
 ### server.handleUpgrade(request, socket, upgradeHead, callback)
 
 Handles a HTTP Upgrade request. `request` is an instance of `http.ServerRequest`, `socket` is an instance of `net.Socket`.
 
-When the Upgrade was successfully, the `callback` will be called with a `ws.WebSocket` object as parameter.
+When the Upgrade was successfully, the `callback` will be called with a `WebSocket` object as parameter.
 
 ### Event: 'error'
 
@@ -92,14 +92,14 @@ Emitted with the object of HTTP headers that are going to be written to the `Str
 
 `function (socket) { }`
 
-When a new WebSocket connection is established. `socket` is an object of type `ws.WebSocket`.
+When a new WebSocket connection is established. `socket` is an object of type `WebSocket`.
 
 
-## Class: ws.WebSocket
+## Class: WebSocket
 
 This class represents a WebSocket connection. It is an `EventEmitter`.
 
-### new ws.WebSocket(address, [protocols], [options])
+### new WebSocket(address, [protocols], [options])
 
 * `address` String
 * `protocols` String|Array
@@ -107,7 +107,7 @@ This class represents a WebSocket connection. It is an `EventEmitter`.
   * `protocol` String
   * `agent` Agent
   * `headers` Object
-  * `protocolVersion` Number|String  
+  * `protocolVersion` Number
     -- the following only apply if `address` is a String
   * `host` String
   * `origin` String
@@ -121,11 +121,11 @@ This class represents a WebSocket connection. It is an `EventEmitter`.
   * `perMessageDeflate` Boolean|Object
   * `localAddress` String
 
-Instantiating with an `address` creates a new WebSocket client object. If `address` is an Array (request, socket, rest), it is instantiated as a Server client (e.g. called from the `ws.Server`).
+Instantiating with an `address` creates a new WebSocket client object. If `address` is an Array (request, socket, rest), it is instantiated as a Server client (e.g. called from the `WebSocket.Server`).
 
 ### options.perMessageDeflate
 
-Parameters of permessage-deflate extension which have the same form with the one for `ws.Server` except the direction of requests. (e.g. `serverNoContextTakeover` is the value to be requested to the server)
+Parameters of permessage-deflate extension which have the same form with the one for `WebSocket.Server` except the direction of requests. (e.g. `serverNoContextTakeover` is the value to be requested to the server)
 
 ### websocket.bytesReceived
 
@@ -137,15 +137,11 @@ Possible states are `WebSocket.CONNECTING`, `WebSocket.OPEN`, `WebSocket.CLOSING
 
 ### websocket.protocolVersion
 
-The WebSocket protocol version used for this connection, `8`, `13` or `hixie-76` (the latter only for server clients).
+The WebSocket protocol version used for this connection, `8`, `13`.
 
 ### websocket.url
 
 The URL of the WebSocket server (only for clients)
-
-### websocket.supports
-
-Describes the feature of the used protocol version. E.g. `supports.binary` is a boolean that describes if the connection supports binary messages.
 
 ### websocket.upgradeReq
 
@@ -174,7 +170,20 @@ Resume the client stream
 
 ### websocket.send(data, [options], [callback])
 
-Sends `data` through the connection. `options` can be an object with members `mask`, `binary` and `compress`. The optional `callback` is executed after the send completes.
+* `data` Any The data to send.
+* `options` Object An options object.
+  * `compress` Boolean Specifies whether `data` should be compressed or not.
+    Defaults to `true` when permessage-deflate is enabled.
+  * `binary` Boolean Specifies whether `data` should be sent as a binary or not.
+    Default is autodetected.
+  * `mask` Boolean Specifies whether `data` should be masked or not. Defaults
+    to `true` when `websocket` is not a server client.
+  * `fin` Boolean Specifies whether `data` is the last fragment of a message or
+    not. Defaults to `true`.
+* `callback` Function An optional callback which is invoked when the send
+  completes.
+
+Sends `data` through the connection.
 
 ### websocket.stream([options], callback)
 
